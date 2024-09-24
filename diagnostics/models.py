@@ -1,15 +1,6 @@
 from django.db import models
-
 """
-    Modelo para almacenar información sobre radiografías.
-
-    Attributes:
-        image: El archivo de imagen de la radiografía.
-        patient_name: El nombre del paciente.
-        patient_dni: El DNI del paciente.
-        doctor_name: El nombre del médico que realizó el diagnóstico.
-        uploaded_at: Fecha y hora en la que se subió la imagen.
-    """
+    Modelo para almacenar información sobre radiografías"""
 
 
 class Radiography(models.Model):

@@ -8,14 +8,15 @@ from django.http import JsonResponse
 from tensorflow.keras.models import load_model
 from tensorflow.keras.utils import img_to_array
 from PIL import Image
+
 from .models import Radiography
 from django.conf import settings
 
 # Rutas relativas a los modelos .h5
 TOXIC_MODEL_PATH = os.path.join(
-    settings.BASE_DIR, 'diagnostics', 'ia_models', 'ModeloToraxIAValidacionMuchasImg.h5')
+    settings.BASE_DIR, 'diagnostics', 'ia_models', 'ModeloToraxIAValidacionMuchasImgv2.h5')
 DISEASE_MODEL_PATH = os.path.join(
-    settings.BASE_DIR, 'diagnostics', 'ia_models', 'ModeloToraxIAPneumonia.h5')
+    settings.BASE_DIR, 'diagnostics', 'ia_models', 'ModeloToraxIA4Clases2024-09-19_16-58-29.h5')
 
 # Carga perezosa del modelo (solo cuando sea necesario)
 torax_model = None
