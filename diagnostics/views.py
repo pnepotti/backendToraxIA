@@ -5,8 +5,10 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 import numpy as np
 from django.http import JsonResponse
-from tensorflow.keras.models import load_model
-from tensorflow.keras.utils import img_to_array
+import tensorflow as tf
+import keras
+from keras.models import load_model
+from keras.utils import img_to_array
 from PIL import Image
 
 from .models import Radiography
