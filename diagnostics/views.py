@@ -10,9 +10,9 @@ import keras
 from keras.models import load_model
 from keras.utils import img_to_array
 from PIL import Image
-
-from .models import Radiography
 from django.conf import settings
+from .models import Radiography
+
 
 # Rutas relativas a los modelos .h5
 TOXIC_MODEL_PATH = os.path.join(
@@ -41,11 +41,14 @@ def load_models():
 
 
 def preprocess_image(img, target_size):
-    img = img.resize(target_size)
-    img = img_to_array(img)
+    img = img.convert('RGB')  # Convertir a RGB si no lo está
+    img = img.resize(target_size)  # Redimensionar la imagen
+    img = img_to_array(img)  # Convertir a un array NumPy
+    # Añadir la dimensión extra para lotes (batch)
     img = np.expand_dims(img, axis=0)
-    img = img / 255.0  # Normalizar
+    img = img / 255.0  # Normalizar los valores de la imagen (0-1)
     return img
+
 
 # Vista para manejar la predicción de imágenes
 
