@@ -87,8 +87,8 @@ class DiagnosticView(APIView):
 
             # Validar si es una radiografía de tórax
             is_torax = torax_model.predict(preprocessed_img)
-            if is_torax[0] < 0.5:  # Ajusta este umbral según tu modelo
-                return Response({'error': 'La imagen no es una radiografía de tórax.'}, status=status.HTTP_400_BAD_REQUEST)
+            if is_torax[0] < 0.5:  # Ajusta este umbra l según tu modelo
+                return Response({'message': 'La imagen no es una radiografía de tórax.'}, status=status.HTTP_200_OK)
 
             # Si es tórax, hacer la predicción de la enfermedad
             prediction = disease_model.predict(preprocessed_img)
