@@ -95,9 +95,11 @@ class DiagnosticView(APIView):
             class_index = np.argmax(prediction[0])
 
             # Mapear el índice de predicción a una clase de enfermedad
-            classes = ['NORMAL', 'COVID19', 'PNEUMONIA',
+            classes = ['COVID19', 'NORMAL', 'PNEUMONIA',
                        'TUBERCULOSIS']  # Nombres de las clases
             result = classes[class_index]
+            sorted_probabilities = np.sort(prediction[0])[
+                ::-1]  # Ordenar de mayor a menor
 
             # Guardar los datos de la radiografía en la base de datos
             Radiography.objects.create(
@@ -109,7 +111,7 @@ class DiagnosticView(APIView):
             )
 
             # Retornar el diagnóstico
-            return Response({'diagnosis': result}, status=status.HTTP_200_OK)
+            return Response({'diagnosis': result, 'probability': prediction[0][class_index], 'entropy': (-np.sum(prediction[0] * np.log(prediction[0] + 1e-9))), 'confidence': (sorted_probabilities[0] - sorted_probabilities[1])}, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({'error': f'Error durante el procesamiento: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
