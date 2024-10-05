@@ -79,8 +79,12 @@ WSGI_APPLICATION = 'torax_ai.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'torax_ia_bd',  # Nombre de la base de datos en PostgreSQL
+        'USER': 'postgres',
+        'PASSWORD': 'tiagrupo7',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 

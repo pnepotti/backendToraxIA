@@ -1,14 +1,16 @@
 import os
-import numpy as np
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
-from PIL import Image
-from django.conf import settings
-from .models import Radiography
+import numpy as np
+from django.http import JsonResponse
+import tensorflow as tf
 from keras.models import load_model
 from keras.utils import img_to_array
+from PIL import Image
+from django.conf import settings
+from .models import RadiographyImage, RadiographyDiagnosis
 
 # Rutas relativas a los modelos .h5
 TOXIC_MODEL_PATH = os.path.join(
@@ -81,7 +83,7 @@ class DiagnosticView(APIView):
 
             # Validar si es una radiografía de tórax
             is_torax = torax_model.predict(preprocessed_img)
-            if is_torax[0] < 0.5:  # Ajusta este umbral según tu modelo
+            if is_torax[0][0] < 0.5:  # Ajusta este umbral según tu modelo
                 return Response({'message': 'La imagen no es una radiografía de tórax.'}, status=status.HTTP_200_OK)
 
             # Si es tórax, hacer la predicción de la enfermedad
@@ -96,50 +98,36 @@ class DiagnosticView(APIView):
                 ::-1]  # Ordenar de mayor a menor
 
             # Guardar los datos de la radiografía en la base de datos
-            Radiography.objects.create(
+            RadiographyImage.objects.create(
                 patient_name=patient_name,
                 patient_dni=patient_dni,
                 doctor_name=doctor_name,
                 image=img_file,
-                disease=result,  # Corrección aquí
-                # Agregar probabilidad
-                prediccion_probabilidad=prediction[0][class_index],
-                # Agregar confianza
-                prediccion_confianza=(
-                    sorted_probabilities[0] - sorted_probabilities[1]),
-                # Agregar entropía
-                prediccion_entropia=(-np.sum(prediction[0]
-                                     * np.log(prediction[0] + 1e-9)))
+                diagnosis=result
             )
 
             # Retornar el diagnóstico
-            return Response({
-                'diagnosis': result,
-                'probability': prediction[0][class_index],
-                'entropy': (-np.sum(prediction[0] * np.log(prediction[0] + 1e-9))),
-                'confidence': (sorted_probabilities[0] - sorted_probabilities[1])
-            }, status=status.HTTP_200_OK)
+            return Response({'diagnosis': result, 'probability': prediction[0][class_index], 'entropy': (-np.sum(prediction[0] * np.log(prediction[0] + 1e-9))), 'confidence': (sorted_probabilities[0] - sorted_probabilities[1])}, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({'error': f'Error durante el procesamiento: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# Vista para obtener imágenes guardadas
+# Vista para manejar la obtención de imágenes
 
 
 class ImagesView(APIView):
-    """Vista para obtener las imágenes guardadas en la base de datos."""
+    def get(self, request, format=None):
+        patient_dni = request.query_params.get('dni')
+        if not patient_dni:
+            return Response({'error': 'Debe proporcionar un DNI.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    def get(self, request, patient_dni=None):
-        if patient_dni is not None:
-            images = Radiography.objects.filter(patient_dni=patient_dni)
-        else:
-            images = Radiography.objects.all()
-
+        # Buscar imágenes por DNI del paciente
+        images = RadiographyImage.objects.filter(patient_dni=patient_dni)
         if not images:
-            return Response({'message': 'No se encontraron imágenes.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'No se encontraron imágenes para el DNI proporcionado.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Convertir los resultados a un formato serializable
-        serialized_images = [{'id': img.id, 'patient_name': img.patient_name,
-                              'doctor_name': img.doctor_name} for img in images]
+        # Serializar los datos de las imágenes
+        image_data = [{'id': img.id, 'image_url': img.image.url}
+                      for img in images]
 
-        return Response(serialized_images, status=status.HTTP_200_OK)
+        return Response({'images': image_data}, status=status.HTTP_200_OK)
