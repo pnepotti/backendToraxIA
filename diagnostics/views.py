@@ -92,7 +92,7 @@ class DiagnosticView(APIView):
 
             # Mapear el índice de predicción a una clase de enfermedad
             classes = ['COVID19', 'NORMAL', 'PNEUMONIA',
-                       'TUBERCULOSIS']  # Nombres de las clases
+                       'PNEUMOTHORAX', 'TUBERCULOSIS']  # Nombres de las clases
             result = classes[class_index]
             sorted_probabilities = np.sort(prediction[0])[
                 ::-1]  # Ordenar de mayor a menor
