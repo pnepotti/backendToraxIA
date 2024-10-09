@@ -1,10 +1,39 @@
 from rest_framework import serializers
-from .models import Radiography
+from .models import Doctor, Patient, RadiographyImage, RadiographyPredictions
+
+# Serializer para el modelo Doctor
 
 
-class RadiographySerializer(serializers.ModelSerializer):
+class DoctorSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Radiography
-        fields = ['patient_name', 'patient_dni', 'doctor_name',
-                  'image', 'uploaded_at']  # Incluir uploaded_at
-        read_only_fields = ['uploaded_at']  # Este campo es solo de lectura
+        model = Doctor
+        fields = ['id', 'name', 'specialty']
+
+# Serializer para el modelo Patient
+
+
+class PatientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Patient
+        fields = ['id', 'name', 'dni', 'date_of_birth']
+
+# Serializer para el modelo RadiographyPredictions
+
+
+class RadiographyPredictionsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RadiographyPredictions
+        fields = ['id', 'radiography_image', 'disease',
+                  'prediction_probability', 'prediction_confidence', 'diagnosed_at']
+
+# Serializer para el modelo RadiographyImage, incluyendo las predicciones
+
+
+class RadiographyImageSerializer(serializers.ModelSerializer):
+    predictions = RadiographyPredictionsSerializer(
+        many=True, read_only=True)  # Incluir predicciones relacionadas
+
+    class Meta:
+        model = RadiographyImage
+        fields = ['id', 'image', 'uploaded_at',
+                  'doctor', 'patient', 'predictions']

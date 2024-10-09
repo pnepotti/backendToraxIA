@@ -10,7 +10,7 @@ from keras.models import load_model
 from keras.utils import img_to_array
 from PIL import Image
 from django.conf import settings
-from .models import RadiographyImage, RadiographyDiagnosis
+from .models import RadiographyImage, RadiographyPredictions, Doctor, Patient
 
 # Rutas relativas a los modelos .h5
 TOXIC_MODEL_PATH = os.path.join(
@@ -97,17 +97,32 @@ class DiagnosticView(APIView):
             sorted_probabilities = np.sort(prediction[0])[
                 ::-1]  # Ordenar de mayor a menor
 
+            # Buscar o crear doctor y paciente
+            doctor, _ = Doctor.objects.get_or_create(name=doctor_name)
+            patient, _ = Patient.objects.get_or_create(
+                name=patient_name, dni=patient_dni)
+
             # Guardar los datos de la radiografía en la base de datos
-            RadiographyImage.objects.create(
-                patient_name=patient_name,
-                patient_dni=patient_dni,
-                doctor_name=doctor_name,
-                image=img_file,
-                diagnosis=result
+            radiography_image = RadiographyImage.objects.create(image=img_file)
+
+            # Crear múltiples predicciones (si es necesario en el futuro)
+            RadiographyPredictions.objects.create(
+                radiography_image=radiography_image,
+                doctor=doctor,
+                patient=patient,
+                disease=result,
+                prediction_probability=prediction[0][class_index],
+                prediction_confidence=(
+                    sorted_probabilities[0] - sorted_probabilities[1])
             )
 
             # Retornar el diagnóstico
-            return Response({'diagnosis': result, 'probability': prediction[0][class_index], 'entropy': (-np.sum(prediction[0] * np.log(prediction[0] + 1e-9))), 'confidence': (sorted_probabilities[0] - sorted_probabilities[1])}, status=status.HTTP_200_OK)
+            return Response({
+                'diagnosis': result,
+                'probability': prediction[0][class_index],
+                'entropy': (-np.sum(prediction[0] * np.log(prediction[0] + 1e-9))),
+                'confidence': (sorted_probabilities[0] - sorted_probabilities[1])
+            }, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({'error': f'Error durante el procesamiento: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -122,7 +137,8 @@ class ImagesView(APIView):
             return Response({'error': 'Debe proporcionar un DNI.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Buscar imágenes por DNI del paciente
-        images = RadiographyImage.objects.filter(patient_dni=patient_dni)
+        images = RadiographyImage.objects.filter(
+            radiographypredictions__patient__dni=patient_dni)
         if not images:
             return Response({'error': 'No se encontraron imágenes para el DNI proporcionado.'}, status=status.HTTP_404_NOT_FOUND)
 
