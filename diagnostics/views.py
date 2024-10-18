@@ -4,19 +4,18 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 import numpy as np
-from django.http import JsonResponse
-import tensorflow as tf
 from keras.models import load_model
 from keras.utils import img_to_array
 from PIL import Image
 from django.conf import settings
-from .models import RadiographyImage, RadiographyPredictions, Doctor, Patient
+from .models import Radiography, Prediction, Doctor, Patient
+from decimal import Decimal
 
 # Rutas relativas a los modelos .h5
 TOXIC_MODEL_PATH = os.path.join(
     settings.BASE_DIR, 'diagnostics', 'ia_models', 'ModeloToraxIAValidacionMuchasImgv2.h5')
 DISEASE_MODEL_PATH = os.path.join(
-    settings.BASE_DIR, 'diagnostics', 'ia_models', 'ModeloToraxIA4Clases2024-09-19_16-58-29.h5')
+    settings.BASE_DIR, 'diagnostics', 'ia_models', 'ModeloToraxIA5Clases2024-10-02_16-36-52.h5')
 
 # Carga perezosa del modelo (solo cuando sea necesario)
 torax_model = None
@@ -50,6 +49,7 @@ def preprocess_image(img, target_size):
 # Vista para manejar la predicción de imágenes
 
 
+# Vista para manejar la predicción de imágenes
 class DiagnosticView(APIView):
     """Vista para el diagnóstico de radiografías de tórax."""
     parser_classes = (MultiPartParser, FormParser)
@@ -59,9 +59,10 @@ class DiagnosticView(APIView):
         patient_name = request.data.get('patientName')
         patient_dni = request.data.get('patientDni')
         doctor_name = request.data.get('doctorName')
+        doctor_matricula = request.data.get('doctorMatricula')
 
         # Validar que todos los campos estén presentes
-        if not patient_name or not patient_dni or not doctor_name:
+        if not patient_name or not patient_dni or not doctor_name or not doctor_matricula:
             return Response({'error': 'Todos los campos son obligatorios.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Capturar la imagen
@@ -89,43 +90,60 @@ class DiagnosticView(APIView):
             # Si es tórax, hacer la predicción de la enfermedad
             prediction = disease_model.predict(preprocessed_img)
             class_index = np.argmax(prediction[0])
-
-            # Mapear el índice de predicción a una clase de enfermedad
             classes = ['COVID19', 'NORMAL', 'PNEUMONIA',
-                       'PNEUMOTHORAX', 'TUBERCULOSIS']  # Nombres de las clases
-            result = classes[class_index]
-            sorted_probabilities = np.sort(prediction[0])[
-                ::-1]  # Ordenar de mayor a menor
+                       'PNEUMOTHORAX', 'TUBERCULOSIS']
 
+            probability = prediction[0][class_index]
+            entropy = -np.sum(prediction[0] * np.log(prediction[0] + 1e-9))
+            confidence = np.max(prediction[0]) - \
+                np.partition(prediction[0], -2)[-2]
+            # Umbrales para confianza y entropía
+            confidence_threshold = 0.7  # Ajusta según el modelo
+            entropy_threshold = 0.5  # Ajusta según el modelo
+
+            # Verificar confianza y entropía antes de aceptar la predicción
+            if confidence >= confidence_threshold and entropy <= entropy_threshold:
+                result = classes[class_index]  # Predicción aceptada
+            else:
+                result = 'DESCONOCIDO'  # Caso de enfermedad no conocida
+
+        except Exception as e:
+            return Response({'error': f'Error en la predicción: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
             # Buscar o crear doctor y paciente
-            doctor, _ = Doctor.objects.get_or_create(name=doctor_name)
+            doctor, _ = Doctor.objects.get_or_create(
+                name=doctor_name, matricula=doctor_matricula)
             patient, _ = Patient.objects.get_or_create(
                 name=patient_name, dni=patient_dni)
 
             # Guardar los datos de la radiografía en la base de datos
-            radiography_image = RadiographyImage.objects.create(image=img_file)
-
-            # Crear múltiples predicciones (si es necesario en el futuro)
-            RadiographyPredictions.objects.create(
-                radiography_image=radiography_image,
+            radiography = Radiography.objects.create(
+                radiography=img_file,
                 doctor=doctor,
-                patient=patient,
+                patient=patient
+            )
+
+            # Guardar la predicción en la base de datos
+            Prediction.objects.create(
+                radiography_image=radiography,
                 disease=result,
-                prediction_probability=prediction[0][class_index],
-                prediction_confidence=(
-                    sorted_probabilities[0] - sorted_probabilities[1])
+                prediction_probability=Decimal(str(probability)),
+                prediction_confidence=Decimal(str(confidence)),
+                prediction_entropy=Decimal(str(entropy))
             )
 
             # Retornar el diagnóstico
             return Response({
                 'diagnosis': result,
-                'probability': prediction[0][class_index],
-                'entropy': (-np.sum(prediction[0] * np.log(prediction[0] + 1e-9))),
-                'confidence': (sorted_probabilities[0] - sorted_probabilities[1])
+                'probability': probability,
+                'entropy': entropy,
+                'confidence': confidence
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
-            return Response({'error': f'Error durante el procesamiento: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': f'Error al guardar la información del doctor o paciente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # Vista para manejar la obtención de imágenes
 
@@ -133,17 +151,107 @@ class DiagnosticView(APIView):
 class ImagesView(APIView):
     def get(self, request, format=None):
         patient_dni = request.query_params.get('dni')
+
+        # Validar que se proporcione un DNI
         if not patient_dni:
             return Response({'error': 'Debe proporcionar un DNI.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Buscar imágenes por DNI del paciente
-        images = RadiographyImage.objects.filter(
-            radiographypredictions__patient__dni=patient_dni)
-        if not images:
-            return Response({'error': 'No se encontraron imágenes para el DNI proporcionado.'}, status=status.HTTP_404_NOT_FOUND)
+        # Buscar el paciente por DNI
+        try:
+            patient = Patient.objects.get(dni=patient_dni)
+        except Patient.DoesNotExist:
+            return Response({'error': 'No se encontró un paciente con el DNI proporcionado.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Serializar los datos de las imágenes
-        image_data = [{'id': img.id, 'image_url': img.image.url}
-                      for img in images]
+        # Obtener las últimas 5 radiografías del paciente, incluyendo las predicciones
+        radiographies = Radiography.objects.filter(patient=patient).prefetch_related(
+            'predictions').order_by('-uploaded_at')[:5]
 
-        return Response({'images': image_data}, status=status.HTTP_200_OK)
+        # Si no se encuentran radiografías
+        if not radiographies.exists():
+            return Response({'error': 'No se encontraron radiografías para el paciente proporcionado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Serializar los datos de las radiografías y sus predicciones
+        image_data = []
+        for radiography in radiographies:
+            # Obtener las predicciones asociadas a la radiografía
+            predictions = radiography.predictions.all()
+
+            # Agrupar predicciones
+            prediction_data = []
+            for prediction in predictions:
+                prediction_data.append({
+                    'disease': prediction.disease,
+                    'probability': prediction.prediction_probability,
+                    'confidence': prediction.prediction_confidence,
+                    'entropy': prediction.prediction_entropy
+                })
+
+            # Añadir la información de cada radiografía con sus predicciones
+            image_data.append({
+                'radiography_id': radiography.id,
+                'image_url': request.build_absolute_uri(radiography.radiography.url),
+                'uploaded_at': radiography.uploaded_at,
+                'doctor_name': radiography.doctor.name,
+                'patient_name': radiography.patient.name,
+                'predictions': prediction_data
+            })
+
+        return Response({'radiographies': image_data}, status=status.HTTP_200_OK)
+
+
+class ImagesViewPorMatriYDni(APIView):
+    def get(self, request, format=None):
+        # Capturar DNI del paciente y matrícula del médico de los parámetros de consulta
+        patient_dni = request.query_params.get('dniInputMedico')
+        doctor_matricula = request.query_params.get('matricula')
+
+        # Validar que se proporcionen ambos parámetros
+        if not patient_dni or not doctor_matricula:
+            return Response({'error': 'Debe proporcionar tanto el DNI del paciente como la matrícula del médico.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Buscar el paciente por DNI
+        try:
+            patient = Patient.objects.get(dni=patient_dni)
+        except Patient.DoesNotExist:
+            return Response({'error': 'No se encontró un paciente con el DNI proporcionado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Buscar el doctor por matrícula
+        try:
+            doctor = Doctor.objects.get(matricula=doctor_matricula)
+        except Doctor.DoesNotExist:
+            return Response({'error': 'No se encontró un doctor con la matrícula proporcionada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Filtrar radiografías por paciente y doctor
+        radiographies = Radiography.objects.filter(patient=patient, doctor=doctor).prefetch_related(
+            'predictions').order_by('-uploaded_at')[:5]
+
+        # Si no se encuentran radiografías
+        if not radiographies.exists():
+            return Response({'error': 'No se encontraron radiografías para el paciente y médico proporcionados.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Serializar los datos de las radiografías y sus predicciones
+        image_data = []
+        for radiography in radiographies:
+            # Obtener las predicciones asociadas a la radiografía
+            predictions = radiography.predictions.all()
+
+            # Agrupar predicciones
+            prediction_data = []
+            for prediction in predictions:
+                prediction_data.append({
+                    'disease': prediction.disease,
+                    'probability': prediction.prediction_probability,
+                    'confidence': prediction.prediction_confidence,
+                    'entropy': prediction.prediction_entropy
+                })
+
+            # Añadir la información de cada radiografía con sus predicciones
+            image_data.append({
+                'radiography_id': radiography.id,
+                'image_url': request.build_absolute_uri(radiography.radiography.url),
+                'uploaded_at': radiography.uploaded_at,
+                'doctor_name': radiography.doctor.name,
+                'predictions': prediction_data
+            })
+
+        return Response({'radiographies': image_data}, status=status.HTTP_200_OK)

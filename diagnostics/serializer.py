@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Doctor, Patient, RadiographyImage, RadiographyPredictions
+from .models import Doctor, Patient, Radiography, Prediction
 
 # Serializer para el modelo Doctor
 
@@ -7,7 +7,7 @@ from .models import Doctor, Patient, RadiographyImage, RadiographyPredictions
 class DoctorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Doctor
-        fields = ['id', 'name', 'specialty']
+        fields = ['id', 'name', 'matricula', 'specialty']
 
 # Serializer para el modelo Patient
 
@@ -17,23 +17,19 @@ class PatientSerializer(serializers.ModelSerializer):
         model = Patient
         fields = ['id', 'name', 'dni', 'date_of_birth']
 
-# Serializer para el modelo RadiographyPredictions
 
-
-class RadiographyPredictionsSerializer(serializers.ModelSerializer):
+class PredictionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = RadiographyPredictions
+        model = Prediction
         fields = ['id', 'radiography_image', 'disease',
-                  'prediction_probability', 'prediction_confidence', 'diagnosed_at']
-
-# Serializer para el modelo RadiographyImage, incluyendo las predicciones
+                  'prediction_probability', 'prediction_confidence', 'prediction_entropy']
 
 
-class RadiographyImageSerializer(serializers.ModelSerializer):
-    predictions = RadiographyPredictionsSerializer(
-        many=True, read_only=True)  # Incluir predicciones relacionadas
+class RadiographySerializer(serializers.ModelSerializer):
+    # Incluir predicciones relacionadas
+    predictions = PredictionSerializer(many=True, read_only=True)
 
     class Meta:
-        model = RadiographyImage
-        fields = ['id', 'image', 'uploaded_at',
-                  'doctor', 'patient', 'predictions']
+        model = Radiography
+        fields = ['id', 'radiography', 'uploaded_at',
+                  'doctor', 'patient', 'diagnostico', 'predictions']
