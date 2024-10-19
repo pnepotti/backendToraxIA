@@ -46,8 +46,6 @@ def preprocess_image(img, target_size):
     img = img / 255.0  # Normalizar los valores de la imagen (0-1)
     return img
 
-# Vista para manejar la predicción de imágenes
-
 
 # Vista para manejar la predicción de imágenes
 class DiagnosticView(APIView):
@@ -145,7 +143,7 @@ class DiagnosticView(APIView):
             return Response({'error': f'Error al guardar la información del doctor o paciente: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Vista para manejar la obtención de imágenes
+# Vistas para manejar la obtención de imágenes
 
 
 class ImagesView(APIView):
@@ -200,6 +198,7 @@ class ImagesView(APIView):
 
 
 class ImagesViewPorMatriYDni(APIView):
+
     def get(self, request, format=None):
         # Capturar DNI del paciente y matrícula del médico de los parámetros de consulta
         patient_dni = request.query_params.get('dniInputMedico')
@@ -250,7 +249,61 @@ class ImagesViewPorMatriYDni(APIView):
                 'radiography_id': radiography.id,
                 'image_url': request.build_absolute_uri(radiography.radiography.url),
                 'uploaded_at': radiography.uploaded_at,
-                'doctor_name': radiography.doctor.name,
+                'patient_name': radiography.patient.name,
+                'diagnostico': radiography.diagnostico,
+                'predictions': prediction_data
+            })
+
+        return Response({'radiographies': image_data}, status=status.HTTP_200_OK)
+
+
+class ImagesViewPorMatriYDiagNull(APIView):
+
+    def get(self, request, format=None):
+        # Capturar la matrícula del médico de los parámetros de consulta
+        doctor_matricula = request.query_params.get('matricula')
+
+        # Validar que se proporcione la matrícula
+        if not doctor_matricula:
+            return Response({'error': 'Debe proporcionar la matrícula del médico.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Buscar el doctor por matrícula
+        try:
+            doctor = Doctor.objects.get(matricula=doctor_matricula)
+        except Doctor.DoesNotExist:
+            return Response({'error': 'No se encontró un doctor con la matrícula proporcionada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Filtrar radiografías por doctor y diagnostico nulo
+        radiographies = Radiography.objects.filter(doctor=doctor, diagnostico__isnull=True).prefetch_related(
+            'predictions').order_by('-uploaded_at')[:5]
+
+        # Si no se encuentran radiografías
+        if not radiographies.exists():
+            return Response({'error': 'No se encontraron radiografías sin diagnosticar para el médico proporcionado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Serializar los datos de las radiografías y sus predicciones
+        image_data = []
+        for radiography in radiographies:
+            # Obtener las predicciones asociadas a la radiografía
+            predictions = radiography.predictions.all()
+
+            # Agrupar predicciones
+            prediction_data = []
+            for prediction in predictions:
+                prediction_data.append({
+                    'disease': prediction.disease,
+                    'probability': prediction.prediction_probability,
+                    'confidence': prediction.prediction_confidence,
+                    'entropy': prediction.prediction_entropy
+                })
+
+            # Añadir la información de cada radiografía con sus predicciones
+            image_data.append({
+                'radiography_id': radiography.id,
+                'image_url': request.build_absolute_uri(radiography.radiography.url),
+                'uploaded_at': radiography.uploaded_at,
+                'patient_name': radiography.patient.name,
+                'diagnostico': radiography.diagnostico,
                 'predictions': prediction_data
             })
 
