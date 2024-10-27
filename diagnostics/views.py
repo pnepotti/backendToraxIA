@@ -21,8 +21,11 @@ DISEASE_MODEL_PATH = os.path.join(
 torax_model = None
 disease_model = None
 
-# Función para cargar modelos si aún no están cargados
 
+# pylint: disable=no-member
+
+
+# Función para cargar modelos si aún no están cargados
 
 def load_models():
     global torax_model, disease_model
@@ -133,6 +136,7 @@ class DiagnosticView(APIView):
 
             # Retornar el diagnóstico
             return Response({
+                'radiography_id': radiography.id,
                 'diagnosis': result,
                 'probability': probability,
                 'entropy': entropy,
@@ -191,7 +195,8 @@ class ImagesView(APIView):
                 'uploaded_at': radiography.uploaded_at,
                 'doctor_name': radiography.doctor.name,
                 'patient_name': radiography.patient.name,
-                'predictions': prediction_data
+                'predictions': prediction_data,
+                'diagnostico': radiography.diagnostico
             })
 
         return Response({'radiographies': image_data}, status=status.HTTP_200_OK)
@@ -308,3 +313,100 @@ class ImagesViewPorMatriYDiagNull(APIView):
             })
 
         return Response({'radiographies': image_data}, status=status.HTTP_200_OK)
+
+
+class ImagesViewPorMatri(APIView):
+
+    def get(self, request, format=None):
+
+        doctor_matricula = request.query_params.get('matricula')
+
+        # Validar que se proporcionen ambos parámetros
+        if not doctor_matricula:
+            return Response({'error': 'Debe proporcionar la matrícula del médico.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Buscar el doctor por matrícula
+        try:
+            doctor = Doctor.objects.get(matricula=doctor_matricula)
+        except Doctor.DoesNotExist:
+            return Response({'error': 'No se encontró un doctor con la matrícula proporcionada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Filtrar radiografías por paciente y doctor
+        radiographies = Radiography.objects.filter(doctor=doctor).prefetch_related(
+            'predictions').order_by('-uploaded_at')[:5]
+
+        # Si no se encuentran radiografías
+        if not radiographies.exists():
+            return Response({'error': 'No se encontraron radiografías para el paciente y médico proporcionados.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Serializar los datos de las radiografías y sus predicciones
+        image_data = []
+        for radiography in radiographies:
+            # Obtener las predicciones asociadas a la radiografía
+            predictions = radiography.predictions.all()
+
+            # Agrupar predicciones
+            prediction_data = []
+            for prediction in predictions:
+                prediction_data.append({
+                    'disease': prediction.disease,
+                    'probability': prediction.prediction_probability,
+                    'confidence': prediction.prediction_confidence,
+                    'entropy': prediction.prediction_entropy
+                })
+
+            # Añadir la información de cada radiografía con sus predicciones
+            image_data.append({
+                'radiography_id': radiography.id,
+                'image_url': request.build_absolute_uri(radiography.radiography.url),
+                'uploaded_at': radiography.uploaded_at,
+                'patient_name': radiography.patient.name,
+                'doctor_name': radiography.doctor.name,
+                'diagnostico': radiography.diagnostico,
+                'predictions': prediction_data
+            })
+
+        return Response({'radiographies': image_data}, status=status.HTTP_200_OK)
+
+
+class ImagesViewPorIdRx(APIView):
+
+    def get(self, request, format=None):
+        # Capturar el ID de la radiografía de los parámetros de consulta
+        id_rx = request.query_params.get('idRx')
+
+        # Validar que se proporcione el ID de la radiografía
+        if not id_rx:
+            return Response({'error': 'Debe proporcionar el Id de la radiografía.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Buscar la radiografía por ID
+        try:
+            radiography = Radiography.objects.get(id=id_rx)
+        except Radiography.DoesNotExist:
+            return Response({'error': 'No se encontró una radiografía con el ID proporcionado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Obtener las predicciones asociadas a la radiografía
+        predictions = radiography.predictions.all()
+
+        # Agrupar predicciones
+        prediction_data = []
+        for prediction in predictions:
+            prediction_data.append({
+                'disease': prediction.disease,
+                'probability': prediction.prediction_probability,
+                'confidence': prediction.prediction_confidence,
+                'entropy': prediction.prediction_entropy
+            })
+
+        # Añadir la información de la radiografía con sus predicciones
+        image_data = {
+            'radiography_id': radiography.id,
+            'image_url': request.build_absolute_uri(radiography.radiography.url),
+            'uploaded_at': radiography.uploaded_at,
+            'doctor_name': radiography.doctor.name,
+            'patient_name': radiography.patient.name,
+            'diagnostico': radiography.diagnostico,
+            'predictions': prediction_data
+        }
+
+        return Response({'radiography': image_data}, status=status.HTTP_200_OK)
