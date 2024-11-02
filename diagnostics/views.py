@@ -15,7 +15,7 @@ from decimal import Decimal
 TOXIC_MODEL_PATH = os.path.join(
     settings.BASE_DIR, 'diagnostics', 'ia_models', 'ModeloToraxIAValidacionMuchasImgv2.h5')
 DISEASE_MODEL_PATH = os.path.join(
-    settings.BASE_DIR, 'diagnostics', 'ia_models', 'ModeloToraxIA5Clases2024-10-02_16-36-52.h5')
+    settings.BASE_DIR, 'diagnostics', 'ia_models', 'ModeloToraxIA4Clases2024-09-19_16-58-29.h5')
 
 # Carga perezosa del modelo (solo cuando sea necesario)
 torax_model = None
@@ -91,22 +91,21 @@ class DiagnosticView(APIView):
             # Si es tórax, hacer la predicción de la enfermedad
             prediction = disease_model.predict(preprocessed_img)
             class_index = np.argmax(prediction[0])
-            classes = ['COVID19', 'NORMAL', 'PNEUMONIA',
-                       'PNEUMOTHORAX', 'TUBERCULOSIS']
+            classes = ['COVID19', 'NORMAL', 'NEUMONIA', 'TUBERCULOSIS']
 
             probability = prediction[0][class_index]
             entropy = -np.sum(prediction[0] * np.log(prediction[0] + 1e-9))
             confidence = np.max(prediction[0]) - \
                 np.partition(prediction[0], -2)[-2]
             # Umbrales para confianza y entropía
-            confidence_threshold = 0.7  # Ajusta según el modelo
-            entropy_threshold = 0.5  # Ajusta según el modelo
+            confidence_threshold = 0.85  # Ajusta según el modelo
+            entropy_threshold = 0.40  # Ajusta según el modelo
 
             # Verificar confianza y entropía antes de aceptar la predicción
             if confidence >= confidence_threshold and entropy <= entropy_threshold:
                 result = classes[class_index]  # Predicción aceptada
             else:
-                result = 'DESCONOCIDO'  # Caso de enfermedad no conocida
+                result = 'DESCONOCIDA'  # Caso de enfermedad no conocida
 
         except Exception as e:
             return Response({'error': f'Error en la predicción: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
