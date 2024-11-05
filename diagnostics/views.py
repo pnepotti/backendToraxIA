@@ -61,6 +61,7 @@ class DiagnosticView(APIView):
         patient_dni = request.data.get('patientDni')
         doctor_name = request.data.get('doctorName')
         doctor_matricula = request.data.get('doctorMatricula')
+        descripcion = request.data.get('descripcion')
 
         # Validar que todos los campos estén presentes
         if not patient_name or not patient_dni or not doctor_name or not doctor_matricula:
@@ -121,7 +122,8 @@ class DiagnosticView(APIView):
             radiography = Radiography.objects.create(
                 radiography=img_file,
                 doctor=doctor,
-                patient=patient
+                patient=patient,
+                descripcion=descripcion
             )
 
             # Guardar la predicción en la base de datos
@@ -195,7 +197,8 @@ class ImagesView(APIView):
                 'doctor_name': radiography.doctor.name,
                 'patient_name': radiography.patient.name,
                 'predictions': prediction_data,
-                'diagnostico': radiography.diagnostico
+                'diagnostico': radiography.diagnostico,
+                'descripcion': radiography.descripcion
             })
 
         return Response({'radiographies': image_data}, status=status.HTTP_200_OK)
@@ -255,7 +258,8 @@ class ImagesViewPorMatriYDni(APIView):
                 'uploaded_at': radiography.uploaded_at,
                 'patient_name': radiography.patient.name,
                 'diagnostico': radiography.diagnostico,
-                'predictions': prediction_data
+                'predictions': prediction_data,
+                'descripcion': radiography.descripcion
             })
 
         return Response({'radiographies': image_data}, status=status.HTTP_200_OK)
@@ -308,7 +312,8 @@ class ImagesViewPorMatriYDiagNull(APIView):
                 'uploaded_at': radiography.uploaded_at,
                 'patient_name': radiography.patient.name,
                 'diagnostico': radiography.diagnostico,
-                'predictions': prediction_data
+                'predictions': prediction_data,
+                'descripcion': radiography.descripcion
             })
 
         return Response({'radiographies': image_data}, status=status.HTTP_200_OK)
@@ -362,7 +367,8 @@ class ImagesViewPorMatri(APIView):
                 'patient_name': radiography.patient.name,
                 'doctor_name': radiography.doctor.name,
                 'diagnostico': radiography.diagnostico,
-                'predictions': prediction_data
+                'predictions': prediction_data,
+                'descripcion': radiography.descripcion
             })
 
         return Response({'radiographies': image_data}, status=status.HTTP_200_OK)
@@ -377,6 +383,10 @@ class ImagesViewPorIdRx(APIView):
         # Validar que se proporcione el ID de la radiografía
         if not id_rx:
             return Response({'error': 'Debe proporcionar el Id de la radiografía.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validar si id_rx es un entero
+        if not id_rx.isdigit():
+            return Response({'error': 'El ID debe ser un número entero válido.'}, status=400)
 
         # Buscar la radiografía por ID
         try:
@@ -405,7 +415,34 @@ class ImagesViewPorIdRx(APIView):
             'doctor_name': radiography.doctor.name,
             'patient_name': radiography.patient.name,
             'diagnostico': radiography.diagnostico,
-            'predictions': prediction_data
+            'predictions': prediction_data,
+            'descripcion': radiography.descripcion
         }
 
         return Response({'radiography': image_data}, status=status.HTTP_200_OK)
+
+
+class DiagnosticPorIdRx(APIView):
+
+    def post(self, request, format=None):
+        # Capturar id de la radiografía y el diagnóstico desde el cuerpo de la solicitud
+        id_rx = request.data.get('idRx')
+        diagnostico = request.data.get('diagnostico')
+
+        # Validar que ambos parámetros fueron proporcionados
+        if not id_rx or not diagnostico:
+            return Response({'error': 'Debe proporcionar el ID de la radiografía y el diagnóstico.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Buscar la radiografía por ID
+        try:
+            radiography = Radiography.objects.get(id=id_rx)
+        except Radiography.DoesNotExist:
+            return Response({'error': 'No se encontró una radiografía con el ID proporcionado.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        # Asignar el diagnóstico al campo correspondiente y guardar
+        radiography.diagnostico = diagnostico
+        radiography.save()
+
+        return Response({'success': 'Diagnóstico asignado exitosamente.'}, status=status.HTTP_200_OK)

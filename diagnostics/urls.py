@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import DiagnosticView, ImagesView, ImagesViewPorMatriYDni, ImagesViewPorMatriYDiagNull, ImagesViewPorMatri, ImagesViewPorIdRx
+from .views import DiagnosticView, ImagesView, ImagesViewPorMatriYDni, ImagesViewPorMatriYDiagNull, ImagesViewPorMatri, ImagesViewPorIdRx, DiagnosticPorIdRx
 
 urlpatterns = [
     path('api/diagnostic/', DiagnosticView.as_view(), name='diagnostic'),
@@ -11,5 +11,7 @@ urlpatterns = [
     path('api/images-by-matricula/',
          ImagesViewPorMatri.as_view(), name='images_by_matricula'),
     path('api/images-by-idRx/',
-         ImagesViewPorIdRx.as_view(), name='images_by_idRx')
+         ImagesViewPorIdRx.as_view(), name='images_by_idRx'),
+    path('api/diagnosticar-by-idRx/',
+         DiagnosticPorIdRx.as_view(), name='diagnosticar_by_idRx')
 ]

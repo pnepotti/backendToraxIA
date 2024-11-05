@@ -32,4 +32,4 @@ class RadiographySerializer(serializers.ModelSerializer):
     class Meta:
         model = Radiography
         fields = ['id', 'radiography', 'uploaded_at',
-                  'doctor', 'patient', 'diagnostico', 'predictions']
+                  'doctor', 'patient', 'descripcion', 'diagnostico', 'predictions']

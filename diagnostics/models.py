@@ -37,8 +37,10 @@ class Radiography(models.Model):
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
     # Un paciente puede tener muchas imágenes
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    # Diagnóstico opcional agregado
-    diagnostico = models.CharField(max_length=255, blank=True, null=True)
+    # Descripcion opcional
+    descripcion = models.CharField(max_length=400, blank=True, null=True)
+    # Diagnóstico opcional
+    diagnostico = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         return f"Radiografía de {self.patient.name} subida en {self.uploaded_at}"
