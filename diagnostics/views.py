@@ -138,7 +138,11 @@ class DiagnosticView(APIView):
             # Retornar el diagnóstico
             return Response({
                 'radiography_id': radiography.id,
-                'diagnosis': result,
+                'patient_name': radiography.patient.name,
+                'patient_dni': radiography.patient.dni,
+                'doctor_name': radiography.doctor.name,
+                'descripcion': radiography.descripcion,
+                'prediccion': result,
                 'probability': probability,
                 'entropy': entropy,
                 'confidence': confidence
