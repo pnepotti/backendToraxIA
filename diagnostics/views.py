@@ -11,6 +11,15 @@ from django.conf import settings
 from .models import Radiography, Prediction, Doctor, Patient
 from decimal import Decimal
 
+import shutil
+from datetime import date
+from rest_framework.views import APIView
+
+# Rutas configuradas para guardar las imágenes validadas y el archivo CSV
+FUTURO_SET_PATH = "./media/futuro_dataset/"
+METADATA_CSV_PATH = os.path.join(FUTURO_SET_PATH, "metadatos.csv")
+
+
 # Rutas relativas a los modelos .h5
 TOXIC_MODEL_PATH = os.path.join(
     settings.BASE_DIR, 'diagnostics', 'ia_models', 'ModeloToraxIAValidacionMuchasImgv2.h5')
@@ -106,7 +115,7 @@ class DiagnosticView(APIView):
             if confidence >= confidence_threshold and entropy <= entropy_threshold:
                 result = classes[class_index]  # Predicción aceptada
             else:
-                result = 'DESCONOCIDA'  # Caso de enfermedad no conocida
+                result = 'ENFERMEDAD DESCONOCIDA POR EL MODELO'  # Caso de enfermedad no conocida
 
         except Exception as e:
             return Response({'error': f'Error en la predicción: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -426,7 +435,7 @@ class ImagesViewPorIdRx(APIView):
         return Response({'radiography': image_data}, status=status.HTTP_200_OK)
 
 
-class DiagnosticPorIdRx(APIView):
+# class DiagnosticPorIdRx(APIView):
 
     def post(self, request, format=None):
         # Capturar id de la radiografía y el diagnóstico desde el cuerpo de la solicitud
@@ -450,3 +459,70 @@ class DiagnosticPorIdRx(APIView):
         radiography.save()
 
         return Response({'success': 'Diagnóstico asignado exitosamente.'}, status=status.HTTP_200_OK)
+
+
+# Función para copiar la imagen y guardar los metadatos
+def guardar_imagen_y_metadatos(ruta_origen, nombre_archivo, diagnostico):
+    try:
+        # Asegurarse de que la carpeta FUTURO_SET_PATH existe
+        if not os.path.exists(FUTURO_SET_PATH):
+            os.makedirs(FUTURO_SET_PATH)
+            print(f"Carpeta '{FUTURO_SET_PATH}' creada exitosamente.")
+
+        # Copiar la imagen a la carpeta destino
+        ruta_destino = os.path.join(FUTURO_SET_PATH, nombre_archivo)
+        shutil.copy(ruta_origen, ruta_destino)
+        print(f"Imagen copiada a {ruta_destino}")
+
+        # Guardar metadatos en el archivo CSV
+        fecha_validacion = date.today().isoformat()
+        if not os.path.exists(METADATA_CSV_PATH):
+            # Crear archivo con encabezado si no existe
+            with open(METADATA_CSV_PATH, "w") as csv_file:
+                csv_file.write("nombre_archivo,diagnostico,fecha_validacion\n")
+                print(f"Archivo de metadatos creado en {METADATA_CSV_PATH}")
+
+        # Agregar datos al archivo CSV
+        with open(METADATA_CSV_PATH, "a") as csv_file:
+            csv_file.write(
+                f"{nombre_archivo},{diagnostico},{fecha_validacion}\n")
+            print(
+                f"Metadatos guardados: {nombre_archivo}, {diagnostico}, {fecha_validacion}")
+
+    except Exception as e:
+        print(f"Error en guardar_imagen_y_metadatos: {str(e)}")
+        raise
+
+
+class DiagnosticPorIdRx(APIView):
+    def post(self, request, format=None):
+        # Capturar ID de la radiografía y diagnóstico desde la solicitud
+        id_rx = request.data.get('idRx')
+        diagnostico = request.data.get('diagnostico')
+
+        if not id_rx or not diagnostico:
+            return Response({'error': 'Debe proporcionar el ID de la radiografía y el diagnóstico.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            radiography = Radiography.objects.get(id=id_rx)
+        except Radiography.DoesNotExist:
+            return Response({'error': 'No se encontró una radiografía con el ID proporcionado.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Guardar el diagnóstico en la base de datos
+            radiography.diagnostico = diagnostico
+            radiography.save()
+
+            # Copiar imagen y guardar metadatos
+            guardar_imagen_y_metadatos(
+                ruta_origen=radiography.radiography.path,
+                nombre_archivo=os.path.basename(radiography.radiography.name),
+                diagnostico=diagnostico
+            )
+        except Exception as e:
+            return Response({'error': f'Error al procesar la imagen o guardar metadatos: {str(e)}'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'success': 'Diagnóstico asignado y datos guardados correctamente.'}, status=status.HTTP_200_OK)
