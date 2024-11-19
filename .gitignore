@@ -1,3 +1,4 @@
 diagnostics/ia_models/*.h5
 venv
 media/radiographies
+media/futuro_dataset
