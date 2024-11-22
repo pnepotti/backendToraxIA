@@ -12,12 +12,16 @@ from .models import Radiography, Prediction, Doctor, Patient
 from decimal import Decimal
 
 import shutil
-from datetime import date
+from datetime import date, datetime
+
 from rest_framework.views import APIView
 
+
+codigo_hospital = "IEM406"
 # Rutas configuradas para guardar las imágenes validadas y el archivo CSV
 FUTURO_SET_PATH = "./media/futuro_dataset/"
-METADATA_CSV_PATH = os.path.join(FUTURO_SET_PATH, "metadatos.csv")
+METADATA_CSV_PATH = os.path.join(
+    FUTURO_SET_PATH, f"{codigo_hospital}-metadatos.csv")
 
 
 # Rutas relativas a los modelos .h5
@@ -518,7 +522,7 @@ class DiagnosticPorIdRx(APIView):
             # Copiar imagen y guardar metadatos
             guardar_imagen_y_metadatos(
                 ruta_origen=radiography.radiography.path,
-                nombre_archivo=os.path.basename(radiography.radiography.name),
+                nombre_archivo=f"{codigo_hospital}_{datetime.now().strftime('%Y%m%d%H%M%S')}.jpg",
                 diagnostico=diagnostico
             )
         except Exception as e:
