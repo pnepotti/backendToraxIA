@@ -1,0 +1,496 @@
+:root {
+    --main-color: #00b1c7;
+    --secondary-color: #414042;
+    --border-color: #00c2db;
+    --tertiary-color: #6c757d;
+    --font-family: 'Encode Sans', sans-serif;
+}
+
+/* General Styles */
+body,
+html {
+    font-family: var(--font-family), 'Roboto', sans-serif;
+    color: var(--secondary-color);
+    background: url('../assets/img/pulmon5.webp') no-repeat center center fixed;
+    background-color: rgb(0, 0, 0);
+    background-size: cover;
+    margin: 1.5em 0 0 0;
+    padding: 0;
+    /*height: 100%;*/
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    user-select: none;
+    font-size: 18px;
+    /*overflow-x: hidden;*/
+
+}
+
+/* Estilos para la campana de notificaciones */
+.notification-icon {
+    z-index: 10;
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    font-size: 26px;
+    cursor: pointer;
+}
+
+.notification-icon i {
+    font-size: 26px;
+    /* Tamaño de la campana */
+    color: rgb(111, 110, 110);
+}
+
+/* Estilos para el puntito rojo de notificación */
+.notification-badge {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    width: 10px;
+    height: 10px;
+    background-color: rgb(225, 5, 5);
+    border-radius: 50%;
+    display: none;
+    /* Ocultado por defecto */
+}
+
+/* Mostrar la notificación cuando haya mensajes */
+.notification-badge.active {
+    display: block;
+}
+
+.content-wrapper {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    max-width: 1200px;
+    position: relative;
+    z-index: 2;
+    overflow: hidden;
+    margin-bottom: 1.5em;
+    /* Asegúrate de que los elementos no se desborden */
+
+}
+
+/*tabla de busqueda*/
+
+.image-list {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+
+.card-image {
+    width: 100%;
+    padding: 10px;
+    /*border: 1px solid #ccc;*/
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 15px;
+    display: none;
+}
+
+.thumbnail {
+    /*width: 100%;*/
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+    margin-top: 10px;
+    text-align: left;
+}
+
+ul li {
+    margin: 5px 0;
+}
+
+/*
+.btn {
+    margin: 10px 5px;
+}
+*/
+/*tabla de busqueda*/
+
+.col {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+
+/* Card */
+.card {
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 8px;
+    color: white;
+    padding: 20px;
+    margin: 0em 1.5em;
+    max-width: 100%;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.container {
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.botonera {
+    padding: 20px;
+    color: rgb(193, 193, 193);
+    min-width: 350px;
+    text-align: center;
+}
+
+/* Typography */
+h1,
+h2 {
+    text-align: center;
+    margin-bottom: 1rem;
+    color: var(--main-color);
+}
+
+.titulo {
+    font-size: 3.5rem;
+    font-weight: 500;
+    color: var(--main-color);
+}
+
+.bajada {
+    font-size: 2.5rem;
+    color: #fafafa;
+}
+
+input {
+    width: 100%;
+    height: 2em;
+    font-size: 18px;
+}
+
+form {
+    overflow: hidden;
+    padding: auto;
+}
+
+#imageInput {
+    display: none;
+}
+
+/* Estilo para el nombre del archivo */
+#file-name {
+    margin-left: 10px;
+    font-size: 14px;
+    color: #333;
+}
+
+/* Buttons */
+.btn {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    background-color: var(--main-color);
+    color: white;
+    border: none;
+    border-radius: 2px;
+    font-size: 20px;
+    cursor: pointer;
+    text-align: center;
+    /*text-transform: uppercase;*/
+    transition: background-color 0.3s ease;
+    margin: 1.5em auto;
+}
+
+.btn:hover {
+    background-color: var(--secondary-color);
+}
+
+#descripcion {
+    width: 90%;
+    font-size: 20px;
+    height: 6em;
+}
+
+
+#otraEnfermedad {
+    display: none;
+}
+
+.enfermedadValidada {
+    width: 90%;
+}
+
+#imagen {
+    max-width: 80%;
+    margin: auto;
+    display: none;
+    margin-top: 1em;
+}
+
+#result {
+    display: none;
+    margin-bottom: 2em;
+}
+
+#predictButton {
+    margin-top: 1em;
+}
+
+#LimpiarButton,
+#LimpiarButton1,
+#volverButton {
+    margin-top: 0;
+}
+
+#predictionTable {
+    width: 100%;
+}
+
+.card-body p {
+    text-align: center;
+}
+
+#patientNameLabel,
+#doctorMatriculaLabel {
+    display: none;
+}
+
+.card-image li {
+    text-align: center;
+}
+
+#patient-name-container h3 {
+    text-align: center;
+}
+
+/* Estilo del popup Reporte*/
+
+.modalReporte {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    padding-top: 10px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+#reportImage {
+    text-align: center;
+    display: block;
+}
+
+.modal-content {
+    background-color: #e8e8e8;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 700px;
+    text-align: center;
+}
+
+.close {
+    color: black;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: grey;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+
+/* Estilo del popup imagen*/
+
+#myModal {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    padding-top: 60px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.9);
+    justify-content: center;
+    align-items: center;
+}
+
+
+#modal-image {
+    max-width: 100%;
+    max-height: 100%;
+    cursor: zoom-in;
+    position: relative;
+    transition: transform 0.3s ease, transform-origin 0.3s ease, cursor 0.3s ease;
+    width: 800px;
+    margin: auto;
+}
+
+
+.modal-content {
+    width: 80%;
+    max-width: 800px;
+    max-height: 90%;
+    position: relative;
+    overflow: hidden;
+}
+
+.zoom-img {
+    overflow: hidden;
+    /* Limita el desbordamiento cuando la imagen se amplía */
+}
+
+.zoom-img img {
+    cursor: zoom-in;
+    transition: transform 0.3s ease, cursor 0.3s ease;
+    margin: auto;
+    position: absolute;
+    /* Necesario para mover la imagen al arrastrar */
+    top: 0;
+    left: 0;
+}
+
+.modal-content img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    max-width: none;
+}
+
+.close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: white;
+    font-size: 35px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 1000;
+}
+
+
+/* Ocultar el scroll del body cuando el modal está abierto */
+body.modal-open {
+    overflow: hidden;
+}
+
+/* Footer */
+footer {
+    background: transparent;
+    color: rgb(154, 154, 154);
+    font-size: .775em;
+    padding: 0rem 2rem;
+    text-align: center;
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+}
+
+.botonGris {
+    background-color: var(--secondary-color);
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+}
+
+
+@media (max-width: 900px) {
+
+    .content-wrapper {
+        flex-direction: column;
+    }
+
+    .titulo {
+        font-size: clamp(2rem, 4vw, 4rem);
+
+    }
+
+    .card {
+        margin: 0.5em 0em;
+    }
+
+    .container {
+        padding: 0;
+    }
+
+    .card-image {
+        padding: 5px;
+    }
+
+    body,
+    html {
+        margin-top: 0;
+    }
+
+}
+
+
+/* Media Queries */
+@media (max-width: 768px) {
+
+    /*tabla de busqueda*/
+    .image-list {
+        display: block;
+        /* Cambiamos a block para que las tarjetas se coloquen una debajo de otra */
+    }
+
+    .card-image {
+        width: 100%;
+        /* La tarjeta ocupa todo el ancho disponible */
+        margin-bottom: 20px;
+
+        padding: 0;
+
+    }
+
+    /*tabla de busqueda*/
+    .content-wrapper {
+        flex-direction: column;
+    }
+
+    .col {
+        width: 100%;
+    }
+
+    .container {
+        margin-top: 5px;
+    }
+
+}
+
+@media (max-width: 600px) {
+    .btn {
+        /* font-size: 26px;*/
+    }
+
+    .botonera {
+        /* padding: 5px;*/
+    }
+}
